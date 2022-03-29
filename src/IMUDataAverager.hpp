@@ -73,7 +73,7 @@ namespace IMUWIP{
                 if(Stamp - m_pBuffer[i].Timestamp <= m_AvgTime){
                     pAvgData->AccelX += m_pBuffer[i].SData.AccelX;
                     pAvgData->AccelY += m_pBuffer[i].SData.AccelY;
-                    pAvgData->AccelZ += m_pBuffer[i].SData.AccelY;
+                    pAvgData->AccelZ += m_pBuffer[i].SData.AccelZ;
 
                     pAvgData->GyroX += m_pBuffer[i].SData.GyroX;
                     pAvgData->GyroY += std::abs(m_pBuffer[i].SData.GyroY);
