@@ -10,7 +10,10 @@
 #include <MPU6050.h>
 #include "IMUPackage.hpp"
 #include "IMUDataAverager.hpp"
-#include "WiFiData.h"
+
+// WiFi credentials
+const char *pSSID = "..."; // provide SSID of WiFi network to connect to
+const char *pPWD = "..."; // provide WiFi's password
 
 // build for left or for right leg?
 const bool BuildLeftLeg = true;
