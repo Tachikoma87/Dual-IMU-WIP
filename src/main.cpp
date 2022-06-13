@@ -1,44 +1,44 @@
-#include <Arduino.h>
+#include <inttypes.h>
 
-#if defined(ESP32)
-#include <WiFi.h> // header for ESP32
-#elif defined(ESP8266)
-#include <ESP8266WiFi.h> // header for ESP8266
+/// Config portion of the file
+/** 
+ * Define which device to build. Activate only one at a time!
+ */
+//#define BUILD_SHINTRACKER_LEFT
+//#define BUILD_SHINTRACKER_RIGHT
+#define BUILD_WIPADAPTER
+
+
+/**
+ * Provide required WiFi data here.
+ * If you want to use the adapter make sure that WiFi configuration matches when you build 
+ * the shin trackers and the adapter.
+ */
+#if defined(BUILD_WIPADAPTER)
+const char *pSSID = "Dual-IMU-WiFi"; // provide SSID of WiFi network to connect to
+const char *pPWD = "DualImuWIP"; // provide WiFi's password
+#else
+const char *pSSID = "Dual-IMU-WiFi"; // your WiFi's SSID
+const char *pPWD = "DualImuWIP";  // matching password for your WiFi
 #endif
 
-#include <WiFiUdp.h>
-#include <MPU6050.h>
-#include "IMUPackage.hpp"
-#include "IMUDataAverager.hpp"
-#include "WiFiData.h"
+// port to use for communication
+const uint16_t Port = 10042; 
 
-// build for left or for right leg?
-const bool BuildLeftLeg = true;
+//// Code portion of the file
+#if defined(BUILD_SHINTRACKER_LEFT) || defined(BUILD_SHINTRACKER_RIGHT)
+#include "ShinTracker.h"
 
-const char *pUDPTargetAddress = "192.168.1.206"; // IP address of host/target system
-const uint16_t UDPPort = (BuildLeftLeg) ?  25000 : 25001;
+// pins to use for UART
 const uint8_t PinSDA = 4;
 const uint8_t PinSCL = 0;
 
-// create UDP instance
-WiFiUDP Udp;
-// create sensor instance
-ArduForge::MPU6050 IMU;
+IMUWIP::ShinTracker STracker;
 
-uint32_t StartTime;
-
-uint8_t Buffer[256];
-
-uint32_t LastPackage = 0;
-uint32_t LastIMURead = 0;
-
-uint32_t IMUSamplingFreq = 10; // every 10 milliseconds
-uint32_t PackageSendingFreq = 20; // every 20 milliseconds
-
-IMUWIP::IMUDataAverager DataAvg;
-
-void setup() {
+void setup(void){
+    // start serial
     Serial.begin(115200);
+
     // connect to the WiFi network
     WiFi.begin(pSSID, pPWD);
     Serial.print("Connecting to WiFi .");
@@ -49,66 +49,44 @@ void setup() {
     Serial.print(" Connected to \n");
     Serial.print("\tNetwork: "); Serial.print(pSSID); Serial.print("\n");
     Serial.print("\tIP: "); Serial.print(WiFi.localIP());Serial.print("\n");
-  
-    StartTime = millis();
 
-    Udp.begin(27341);
+    // start I2C
     Wire.begin(PinSDA, PinSCL);
-    IMU.begin();
-    IMU.calibrate();
 
-    DataAvg.begin(30, 200);
+    #if defined(BUILD_SHINTRACKER_LEFT)
+    STracker.begin(&Wire, IMUWIP::IMUPackage::DEVICE_TRACKER_LEFT, Port);
+    #elif defined(BUILD_SHINTRACKER_RIGHT)
+    STracker.begin(&Wire, IMUWIP::IMUPackage::DEVICE_TRACKER_RIGHT, Port);
+    #endif
+
 }//setup
 
-void loop() {
 
-    if(millis() - LastIMURead > IMUSamplingFreq){
-        // read IMU Data
-        DataAvg.addData(IMU.read());
-        LastIMURead = millis();
-    }
+void loop(void){
 
-    if(millis() - LastPackage > PackageSendingFreq){
+    STracker.update();
+    delay(1);
+}//loop
 
-        // send UDP package
-        IPAddress Target;
-        Target.fromString(pUDPTargetAddress);
 
-        // read IMU data
-        ArduForge::MPU6050::SensorData Data; // = IMU.read();
-        DataAvg.retrieveData(&Data);
-        ArduForge::IMUPackage Package;
-        Package.GyroX = Data.GyroX;
-        Package.GyroY = Data.GyroY;
-        Package.GyroZ = Data.GyroZ;
-        Package.AccelX = Data.AccelX;
-        Package.AccelY = Data.AccelY;
-        Package.AccelZ = Data.AccelZ;
-        Package.Cmd = ArduForge::IMUPackage::CMD_AVG_DATA;
+#elif defined(BUILD_WIPADAPTER)
+#include "WIPAdapter.h"
 
-        // pack to stream and send
-        uint16_t MsgSize = Package.toStream(Buffer, sizeof(Buffer));
-        Udp.beginPacket(Target, UDPPort);
-        Udp.write(Buffer, MsgSize);
-        Udp.endPacket();
+IMUWIP::WIPAdapter Adapter;
 
-        LastPackage = millis();
-    }
+void setup(void){
+    Serial.begin(115200);
 
-    // Did we receive data?
-    Udp.parsePacket();
-    int16_t MsgSize = Udp.read(Buffer, sizeof(Buffer));
+    Adapter.begin(pSSID, pPWD, Port);
 
-    if(MsgSize > 0){
-         if(ArduForge::IMUPackage::checkMagicTag(Buffer)){
-             ArduForge::IMUPackage P;
-             P.fromStream(Buffer, MsgSize);
+}//setup
 
-             if(P.Cmd == ArduForge::IMUPackage::CMD_CALIBRATE){
-                 IMU.calibrate();
-             } 
-         }//if[IMUPackage]
-    }//if[received message]
+void loop(void){
+    Adapter.update();
 
     delay(1);
 }//loop
+
+
+#endif
+

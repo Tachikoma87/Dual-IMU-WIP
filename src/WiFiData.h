@@ -16,5 +16,5 @@
 *                                                                           *
 \****************************************************************************/
 
-const char *pSSID = "..."; // provide SSID of WiFi network to connect to
-const char *pPWD = "..."; // provide WiFi's password
+// const char *pSSID = "..."; // provide SSID of WiFi network to connect to
+// const char *pPWD = "..."; // provide WiFi's password
