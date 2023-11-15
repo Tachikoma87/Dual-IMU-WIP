@@ -55,7 +55,7 @@ inline unsigned long get_last_time() {return last_read_time;}
 // Function to calculate IMU offsets
 void calculateIMUOffsets(float &gyroOffsetX, float &gyroOffsetY, float &gyroOffsetZ, 
                          float &accelOffsetX, float &accelOffsetY, float &accelOffsetZ) {
-    const int samples_n = 1000;
+    const int samples_n = 100;
     float gyroSumX = 0, gyroSumY = 0, gyroSumZ = 0;
     float accelSumX = 0, accelSumY = 0, accelSumZ = 0;
 
