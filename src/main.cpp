@@ -237,7 +237,7 @@ void loop() {
         //Serial.printf("\t Angle(y|z|x): %.2f | %.2f | %.2f\n", angle_y, angle_z, angle_x);
         Serial.printf("TOF sensor data:\n");
         Serial.printf("\t Distance: %.2f cm\n", Dist);
-        Serial.printf("\t TOF Sensor Tilt Angle: %.2f degree\n", a_dash);
+        //Serial.printf("\t TOF Sensor Tilt Angle: %.2f degree\n", a_dash);
         Serial.printf("\t Height Estimation from ground source: %.2f cm\n", h );
         Serial.printf("\t Foot Angle: %.2f degree\n", beta);
 
