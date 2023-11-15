@@ -43,37 +43,49 @@ uint32_t PackageSendingFreq = 20; // every 20 milliseconds
 
 //global variables
 // Use the following global variables and access functions to help store the overall
-// rotation angle of the sensor
 unsigned long last_read_time;
-//float         last_x_angle;  // These are the filtered angles
-//float         last_y_angle;
-//float         last_z_angle; 
-//float         last_gyro_x_angle;  // Store the gyro angles to compare drift
-//float         last_gyro_y_angle;
-//float         last_gyro_z_angle;
 
 //void set_last_read_angle_data(unsigned long Time, float x, float y, float z, float x_gyro, float y_gyro, float z_gyro) {
 void set_last_read_angle_data(unsigned long Time) {  
   last_read_time = Time;
-  //last_x_angle = x;
-  //last_y_angle = y;
-  //last_z_angle = z;
-  //last_gyro_x_angle = x_gyro;
-  //last_gyro_y_angle = y_gyro;
-  //last_gyro_z_angle = z_gyro;
 }
 
 inline unsigned long get_last_time() {return last_read_time;}
-//inline float get_last_x_angle() {return last_x_angle;}
-//inline float get_last_y_angle() {return last_y_angle;}
-//inline float get_last_z_angle() {return last_z_angle;}
-//inline float get_last_gyro_x_angle() {return last_gyro_x_angle;}
-//inline float get_last_gyro_y_angle() {return last_gyro_y_angle;}
-//inline float get_last_gyro_z_angle() {return last_gyro_z_angle;}
+
+// Function to calculate IMU offsets
+void calculateIMUOffsets(float &gyroOffsetX, float &gyroOffsetY, float &gyroOffsetZ, 
+                         float &accelOffsetX, float &accelOffsetY, float &accelOffsetZ) {
+    const int samples_n = 1000;
+    float gyroSumX = 0, gyroSumY = 0, gyroSumZ = 0;
+    float accelSumX = 0, accelSumY = 0, accelSumZ = 0;
+
+    for (int i = 0; i < samples_n; ++i) {
+        // Assuming IMU.read() returns a structure with gyro and accel data
+        auto data = IMU.read(); 
+        gyroSumX += data.GyroX;
+        gyroSumY += data.GyroY;
+        gyroSumZ += data.GyroZ;
+        accelSumX += data.AccelX;
+        accelSumY += data.AccelY;
+        accelSumZ += data.AccelZ;
+        delay(10); // Small delay between readings
+    }
+
+    gyroOffsetX = gyroSumX / samples_n;
+    gyroOffsetY = gyroSumY / samples_n;
+    gyroOffsetZ = gyroSumZ / samples_n;
+    accelOffsetX = accelSumX / samples_n;
+    accelOffsetY = accelSumY / samples_n;
+    accelOffsetZ = accelSumZ / samples_n;
+}
+
 
 
 IMUWIP::IMUDataAverager DataAvg;
 
+// Global variables for offsets
+float gyroOffsetX, gyroOffsetY, gyroOffsetZ;
+float accelOffsetX, accelOffsetY, accelOffsetZ;
 
 const uint32_t SensorsPrintInterval = 1500; // print interval in milliseconds
 uint32_t LastSensorPrint = 0;
@@ -104,6 +116,10 @@ void setup() {
     IMU.begin();
     IMU.calibrate();
     
+     // Calculate offsets
+    calculateIMUOffsets(gyroOffsetX, gyroOffsetY, gyroOffsetZ, 
+                        accelOffsetX, accelOffsetY, accelOffsetZ);
+
     set_last_read_angle_data(millis());
 
     // begin communication with TOF sensor
@@ -117,7 +133,7 @@ void setup() {
 int steps = 0;
 float mag;
 float prev = 0;
-float threshold =0.37; 
+float threshold =0.3; 
 float AccelAngleX=0, AccelAngleY=0, AccelAngleZ=0;
 double dt, Previous_Time, Time;
 float d, h;
@@ -129,6 +145,18 @@ void loop() {
     if(millis() - LastIMURead > IMUSamplingFreq){
         // read IMU Data
         DataAvg.addData(IMU.read());
+        LastIMURead = millis();
+        // retrieve averaged IMU data
+        ArduForge::MPU6050::SensorData IMUSensorData;
+        DataAvg.retrieveData(&IMUSensorData);
+        IMUSensorData.GyroX -= gyroOffsetX;
+        IMUSensorData.GyroY -= gyroOffsetY;
+        IMUSensorData.GyroZ -= gyroOffsetZ;
+        IMUSensorData.AccelX -= accelOffsetX;
+        IMUSensorData.AccelY -= accelOffsetY;
+        IMUSensorData.AccelZ -= accelOffsetZ;
+
+        DataAvg.addData(IMUSensorData);
         LastIMURead = millis();
     }//if[average IMU data]
 
@@ -153,11 +181,15 @@ void loop() {
         // float AccelAngleY = atan(-1*IMUSensorData.AccelY/sqrt(pow(IMUSensorData.AccelZ,2) + pow(IMUSensorData.AccelX,2)))*RADIANS_TO_DEGREES;
         // float AccelAngleZ = atan(IMUSensorData.AccelZ/sqrt(IMUSensorData.AccelY))*RADIANS_TO_DEGREES;
 
-        float AccelAngleY = atan(IMUSensorData.AccelY/sqrt((IMUSensorData.AccelZ*IMUSensorData.AccelZ) + (IMUSensorData.AccelX*IMUSensorData.AccelX)))*RADIANS_TO_DEGREES;
-        float AccelAngleZ = atan(-1*IMUSensorData.AccelZ/sqrt((IMUSensorData.AccelY*IMUSensorData.AccelY) + (IMUSensorData.AccelX*IMUSensorData.AccelX)))*RADIANS_TO_DEGREES;
-        float AccelAngleX = atan((sqrt(IMUSensorData.AccelY*IMUSensorData.AccelY) + (IMUSensorData.AccelZ*IMUSensorData.AccelZ))/IMUSensorData.AccelX)*RADIANS_TO_DEGREES;
+        //float AccelAngleY = atan(IMUSensorData.AccelY/sqrt((IMUSensorData.AccelZ*IMUSensorData.AccelZ) + (IMUSensorData.AccelX*IMUSensorData.AccelX)))*RADIANS_TO_DEGREES;
+        //float AccelAngleZ = atan(-1*IMUSensorData.AccelZ/sqrt((IMUSensorData.AccelY*IMUSensorData.AccelY) + (IMUSensorData.AccelX*IMUSensorData.AccelX)))*RADIANS_TO_DEGREES;
+        //float AccelAngleX = atan((sqrt(IMUSensorData.AccelY*IMUSensorData.AccelY) + (IMUSensorData.AccelZ*IMUSensorData.AccelZ))/IMUSensorData.AccelX)*RADIANS_TO_DEGREES;
             //float AccelAngleX = 0;
-        
+
+        float AccelAngleY = atan2(IMUSensorData.AccelY, sqrt(pow(IMUSensorData.AccelZ, 2) + pow(IMUSensorData.AccelX, 2))) * RADIANS_TO_DEGREES;
+        float AccelAngleX = atan2(IMUSensorData.AccelX, sqrt(pow(IMUSensorData.AccelZ, 2) + pow(IMUSensorData.AccelY, 2))) * RADIANS_TO_DEGREES;
+
+
         Previous_Time = Time;// the previous time is stored before the actual time read
         Time = millis();// actual time read
         float dt = (Time - Previous_Time) / 1000;
@@ -172,9 +204,9 @@ void loop() {
  
         // // Apply the complementary filter to figure out the change in angle - choice of alpha is estimated now.  Alpha depends on the sampling rate...
         float alpha = 0.04;
+        float angle_x = alpha*GyroAngleX + (1.0 - alpha)*AccelAngleX;
         float angle_y = alpha*GyroAngleY + (1.0 - alpha)*AccelAngleY;
-        float angle_z = alpha*GyroAngleZ + (1.0 - alpha)*AccelAngleZ;
-        float angle_x = GyroAngleX;  //Accelerometer doesn't give z-angle
+        //float angle_z = GyroAngleZ;  //Accelerometer doesn't give z-angle
 
          // Update the saved data with the latest values
         //set_last_read_time(Time);
@@ -186,25 +218,26 @@ void loop() {
 
         // When standing Dist = h;
 
-        // while waking
-        float a = AccelAngleZ;
-        float a_dash = (90-a); // d is perpendicular to TOF sensor
-        float h = Dist*(sin( a_dash ));
-        float beta = acos(h/Dist)*RADIANS_TO_DEGREES;
-        
+        // while walking       
+        float a_dash = 90 - AccelAngleX; // α' = 90 - pitch angle
+        float h = Dist * sin(a_dash * PI / 180);
+
+        // Calculate foot angle (β) using height and distance
+        float beta = (h <= Dist) ? acos(h / Dist) * RADIANS_TO_DEGREES : 0.0f; // Convert to degrees
 
         Serial.printf("IMU sensor data:\n");
-        Serial.printf("\t Gyro(y|z|x): %.2f | %.2f | %.2f\n", IMUSensorData.GyroX, IMUSensorData.GyroY, IMUSensorData.GyroZ);
-        Serial.printf("\t Acceleration(y|z|x): %.2f | %.2f | %.2f\n", IMUSensorData.AccelX, IMUSensorData.AccelY, IMUSensorData.AccelZ);
+        //Serial.printf("\t Gyro(y|z|x): %.2f | %.2f | %.2f\n", IMUSensorData.GyroX, IMUSensorData.GyroY, IMUSensorData.GyroZ);
+        Serial.printf("\t Acceleration(x|y|z): %.2f | %.2f | %.2f\n", IMUSensorData.AccelX, IMUSensorData.AccelY, IMUSensorData.AccelZ);
         Serial.printf("\t Average Acceleration Data : %.2f\n", mag );
         Serial.printf("\t Steps : %.2d\n", steps);
+
         
         Serial.printf("\t Acceleration Angle(y|z|x): %.2f | %.2f | %.2f\n", AccelAngleY, AccelAngleZ, AccelAngleX);
-        Serial.printf("\t Gyroscope Angle(y|z|x): %.2f | %.2f | %.2f\n", GyroAngleY, GyroAngleZ, GyroAngleX);
-        Serial.printf("\t Angle(y|z|x): %.2f | %.2f | %.2f\n", angle_y, angle_z, angle_x);
+        //Serial.printf("\t Gyroscope Angle(y|z|x): %.2f | %.2f | %.2f\n", GyroAngleY, GyroAngleZ, GyroAngleX);
+        //Serial.printf("\t Angle(y|z|x): %.2f | %.2f | %.2f\n", angle_y, angle_z, angle_x);
         Serial.printf("TOF sensor data:\n");
         Serial.printf("\t Distance: %.2f cm\n", Dist);
-        Serial.printf("\t TOF Sensor Tilt Angle: %.2f degree\n", a);
+        Serial.printf("\t TOF Sensor Tilt Angle: %.2f degree\n", a_dash);
         Serial.printf("\t Height Estimation from ground source: %.2f cm\n", h );
         Serial.printf("\t Foot Angle: %.2f degree\n", beta);
 
