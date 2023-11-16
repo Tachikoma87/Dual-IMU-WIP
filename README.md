@@ -56,7 +56,15 @@ The Adapter will provide the shin tracker's data as a string in the following fo
 ##S##accel_left_x:accel_left_y:accel_left_z:gyro_left_x:gyro_left_y:gyro_left_z:accel_right_x:accel_right_y:accel_right_z:gyro_right_x:gyro_right_y:gyro_right_z##E##
 
 ## Reference
-Tom Uhlmann and Guido Brunnett, Dual-IMU-WIP: An Easy-to-build Walk-in-Place System based on Inertial Measurement Units, CIVEMSA 2022 (accepted paper)
+    T. Uhlmann and G. Brunnett, "Dual-IMU-WIP: An easy-to-build Walk-in-Place System based on Inertial Measurement Units", 2022 IEEE 9th International Conference on Computational Intelligence and Virtual Environments for Measurement Systems and Applications (CIVEMSA), Chemnitz, Germany, 2022, pp. 1-5, doi: 10.1109/CIVEMSA53371.2022.9853693.
 
 ### Bibtex
-(will be added after publication)
+    @INPROCEEDINGS{DualIMUWIP,
+        author={Uhlmann, Tom and Brunnett, Guido},
+        booktitle={2022 IEEE 9th International Conference on Computational Intelligence and Virtual Environments for Measurement Systems and Applications (CIVEMSA)}, 
+        title={Dual-IMU-WIP: An easy-to-build Walk-in-Place System based on Inertial Measurement Units}, 
+        year={2022},
+        pages={1-5},
+        doi={10.1109/CIVEMSA53371.2022.9853693}
+    }
+
