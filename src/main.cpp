@@ -115,7 +115,7 @@ void setup() {
     // begin communication with IMU
     IMU.begin();
     IMU.calibrate();
-    
+    delay(2000);
      // Calculate offsets
     calculateIMUOffsets(gyroOffsetX, gyroOffsetY, gyroOffsetZ, 
                         accelOffsetX, accelOffsetY, accelOffsetZ);
@@ -219,7 +219,7 @@ void loop() {
         // When standing Dist = h;
 
         // while walking       
-        float a_dash = 90 - AccelAngleX; // α' = 90 - pitch angle
+        float a_dash = 90 - angle_x; // α' = 90 - pitch angle
         float h = Dist * sin(a_dash * PI / 180);
 
         // Calculate foot angle (β) using height and distance
